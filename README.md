@@ -12,13 +12,11 @@ import { geoAlbersUsaVertical } from "d3-geo-albers-usa-vertical";
 const projection = geoAlbersUsaVertical();
 ```
 
-[Try d3-geo-albers-usa-vertical in your browser](https://observablehq.com/@harrystevens/d3-geo-albers-usa-vertical).
-
 ## API Reference
 
-The projection works like a [d3-geo projection](https://d3js.org/d3-geo/projection).
-
 <a name="geoAlbersUsaVertical" href="#geoAlbersUsaVertical">#</a> d3.<b>geoAlbersUsaVertical</b>() · [Source](https://github.com/HarryStevens/d3-geo-albers-usa-vertical/blob/main/src/index.js)
+
+<img src="img/albers-usa-vertical.png" width="300" height="691">
 
 This is a U.S.-centric composite projection of four [geoConicEqualArea](https://d3js.org/d3-geo/conic#geoConicEqualArea) projections: On the top half of the map, [geoAlbers](https://d3js.org/d3-geo/conic#geoAlbers) is used for the eastern part of the lower fourty-eight states. On the bottom half of the map, geoAlbers is used for the western part of the lower forty-eight states, and separate conic equal-area projections are used for Alaska and Hawaii. The scale for Alaska is diminished: it is projected at one-third its true relative area.
 
