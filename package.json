@@ -1,0 +1,53 @@
+{
+  "name": "d3-geo-albers-usa-vertical",
+  "version": "0.0.1",
+  "description": "An adaptation of the Albers USA projection for vertical screens.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HarryStevens/d3-geo-albers-usa-vertical.git"
+  },
+  "keywords": [
+    "d3",
+    "d3-module",
+    "geo",
+    "maps",
+    "cartography",
+    "projection"
+  ],
+  "author": {
+    "name": "Harry Stevens",
+    "url": "https://harryjstevens.com/"
+  },
+  "license": "ISC",
+  "type": "module",
+  "files": [
+    "dist/**/*.js",
+    "src/**/*.js"
+  ],
+  "module": "src/index.js",
+  "main": "src/index.js",
+  "jsdelivr": "dist/d3-geo-albers-usa-vertical.min.js",
+  "unpkg": "dist/d3-geo-albers-usa-vertical.min.js",
+  "exports": {
+    "umd": "./dist/d3-geo-albers-usa-vertical.min.js",
+    "default": "./src/index.js"
+  },
+  "sideEffects": false,
+  "dependencies": {
+    "d3-geo": "^3.1.1",
+    "d3-geo-polygon": "^2.0.1"
+  },
+  "devDependencies": {
+    "@rollup/plugin-terser": "^0.4.4",
+    "eslint": "^8.57.1",
+    "mocha": "^10.8.2",
+    "rollup": "^3.29.5"
+  },
+  "scripts": {
+    "test": "mocha 'test/**/*-test.js' && eslint src test",
+    "prepublishOnly": "rm -rf dist && rollup -c"
+  },
+  "engines": {
+    "node": ">=12"
+  }
+}
