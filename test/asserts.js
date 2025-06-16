@@ -1,3 +1,5 @@
+/* eslint-env mocha */
+
 import assert from "assert";
 
 export function assertProjectionEqual(projection, location, point, delta) {
