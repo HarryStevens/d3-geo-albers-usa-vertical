@@ -1,4 +1,4 @@
-# d3-geo-hemispheres
+# d3-geo-albers-usa-vertical
 
 A map projection compatible with [d3-geo](https://d3js.org/d3-geo) for drawing an adaptation of the [Albers USA projection](https://d3js.org/d3-geo/conic#geoAlbersUsa) for vertical screens.
 
@@ -11,6 +11,8 @@ import { geoAlbersUsaVertical } from "d3-geo-albers-usa-vertical";
 
 const projection = geoAlbersUsaVertical();
 ```
+
+[Try d3-geo-albers-usa-vertical in your browser](https://observablehq.com/@harrystevens/d3-geo-albers-usa-vertical).
 
 ## API Reference
 
