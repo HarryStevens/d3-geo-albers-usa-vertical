@@ -188,11 +188,8 @@ export function geoAlbersUsaVertical() {
           bandY = splitY * k,
           bandX = splitX * k;
 
-    const margin = 0;
-    const marginCoefficient = margin / k;
-    
     lower48EPoint = lower48E
-        .translate([x - bandX - k * marginCoefficient, y])
+        .translate([x - bandX, y])
         .clipExtent([
           [x - bandX, y - 0.238 * k],
           [x, y + 0.234 * k]
@@ -200,7 +197,7 @@ export function geoAlbersUsaVertical() {
         .stream(pointStream);
 
     lower48WPoint = lower48W
-        .translate([x + k * marginCoefficient, y + bandY]) // adjust the magic number for overlap
+        .translate([x, y + bandY]) // adjust the magic number for overlap
         .clipExtent([
           [x - splitX * k, y + bandY - 0.225 * k],
           [x, y + bandY + 0.234 * k]
