@@ -1,6 +1,6 @@
 {
   "name": "d3-geo-albers-usa-vertical",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "An adaptation of the Albers USA projection for vertical screens.",
   "repository": {
     "type": "git",
