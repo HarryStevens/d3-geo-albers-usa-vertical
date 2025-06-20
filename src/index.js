@@ -205,7 +205,7 @@ export function geoAlbersUsaVertical() {
         .stream(pointStream);
 
     alaskaPoint = alaska
-        .translate([x - 0.262 * k, y + bandY + 0.198 * k])
+        .translate([x - 0.265 * k, y + bandY + 0.198 * k])
         .clipExtent([
           [x - splitX * k + epsilon, y + bandY + 0.121 * k + epsilon],
           [x - 0.176 * k - epsilon, y + bandY + 0.234 * k - epsilon]
