@@ -48,6 +48,6 @@
     "prepublishOnly": "rm -rf dist && rollup -c"
   },
   "engines": {
-    "node": ">=12"
+    "node": ">=20.0.0"
   }
 }
