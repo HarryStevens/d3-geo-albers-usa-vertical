@@ -26,7 +26,7 @@ The constituent projections have fixed clip, center and rotation, and thus this 
 
 <a name="geoAlbersUsaPrVertical" href="#geoAlbersUsaPrVertical">#</a> d3.<b>geoAlbersUsaPrVertical</b>() · [Source](https://github.com/HarryStevens/d3-geo-albers-usa-vertical/blob/main/src/albersUsaPrVertical.js)
 
-<a href="https://observablehq.com/@harrystevens/d3-geo-albers-usa-pr-vertical"><img src="img/albers-usa-vertical.png" width="300" height="691" alt="A map of U.S. counties using the vertical Albers USA projection with Puerto Rico"></a>
+<a href="https://observablehq.com/@harrystevens/d3-geo-albers-usa-pr-vertical"><img src="img/albers-usa-pr-vertical.png" width="300" height="691" alt="A map of U.S. counties using the vertical Albers USA projection with Puerto Rico"></a>
 
 A composite projection identical to the <a href="#geoAlbersUsaVertical">U.S. states vertical projection</a> but with another inset for Puerto Rico, projected with [geoConicEqualArea](https://d3js.org/d3-geo/conic#geoConicEqualArea) and placed to the right of Florida.
 
