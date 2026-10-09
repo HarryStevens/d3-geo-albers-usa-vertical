@@ -32,11 +32,15 @@ A composite projection identical to the <a href="#geoAlbersUsaVertical">U.S. sta
 
 <a name="geoAlbersUsaSeam" href="#geoAlbersUsaSeam">#</a> d3.<b>geoAlbersUsaSeam</b>() · [Source](https://github.com/HarryStevens/d3-geo-albers-usa-vertical/blob/main/src/albersUsaSeam.js)
 
+<a href="https://observablehq.com/@harrystevens/d3-geo-albers-usa-seam"><img src="img/albers-usa-seam.png" width="300" height="606" alt="A map of U.S. counties using the Albers USA seam projection, split on state borders"></a>
+
 This is a U.S.-centric composite projection of four [geoConicEqualArea](https://d3js.org/d3-geo/conic#geoConicEqualArea) projections. The lower forty-eight states are split along a state border rather than a meridian: the western boundary of Minnesota, Iowa, Missouri, Arkansas, and Louisiana. On the top half of the map, [geoAlbers](https://d3js.org/d3-geo/conic#geoAlbers) is used for the states on that boundary and to its east, including the District of Columbia. On the bottom half of the map, geoAlbers is used for the other contiguous states, and separate conic equal-area projections are used for Alaska and Hawaii. The scale for Alaska is diminished: it is projected at 0.35× its true relative area. Alaska and Hawaii are placed below the southwestern states.
 
 The constituent projections have fixed clip, center and rotation, and thus this projection does not support [<i>projection</i>.center](https://d3js.org/d3-geo/projection#projection_center), [<i>projection</i>.rotate](https://d3js.org/d3-geo/projection#projection_rotate), [<i>projection</i>.clipAngle](https://d3js.org/d3-geo/projection#projection_clipAngle), or [<i>projection</i>.clipExtent](https://d3js.org/d3-geo/projection#projection_clipExtent).
 
 <a name="geoAlbersUsaPrSeam" href="#geoAlbersUsaPrSeam">#</a> d3.<b>geoAlbersUsaPrSeam</b>() · [Source](https://github.com/HarryStevens/d3-geo-albers-usa-vertical/blob/main/src/albersUsaPrSeam.js)
+
+<a href="https://observablehq.com/@harrystevens/d3-geo-albers-usa-pr-seam"><img src="img/albers-usa-pr-seam.png" width="300" height="606" alt="A map of U.S. counties using the Albers USA seam projection with Puerto Rico, split on state borders"></a>
 
 A composite projection identical to the <a href="#geoAlbersUsaSeam">U.S. states seam projection</a> but with another inset for Puerto Rico, projected with [geoConicEqualArea](https://d3js.org/d3-geo/conic#geoConicEqualArea) and placed to the right of Florida.
 
