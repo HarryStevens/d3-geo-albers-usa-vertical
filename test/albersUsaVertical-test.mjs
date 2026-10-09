@@ -2,7 +2,7 @@
 
 import assert from "assert";
 import { geoAlbersUsaVertical } from "../src/index.js";
-import { assertProjectionEqual } from "./asserts.mjs";
+import { assertLower48Layout, assertProjectionEqual } from "./asserts.mjs";
 
 it("albersUsaVertical(point) and albersUsaVertical.invert(point) returns the expected result", () => {
   const projection = geoAlbersUsaVertical();
@@ -12,6 +12,9 @@ it("albersUsaVertical(point) and albersUsaVertical.invert(point) returns the exp
   assertProjectionEqual(projection, [-149.9003, 61.2181], [216.1, 934.9], 0.1); // Anchorage, AK
   assertProjectionEqual(projection, [-157.8583, 21.3069], [335.9, 937.8], 0.1); // Honolulu, HI
   assert.strictEqual(projection([2.3522, 48.8566]), null); // Paris, France
+  assert.strictEqual(projection.invert([0, 0]), null);
+  assert.strictEqual(projection.invert([10, 10]), null); // used to come back a full panel away
+  assert.strictEqual(projection.invert([1000, 1000]), null);
 });
 
 it("albersUsaVertical(point) and albersUsaVertical.invert(point) returns the expected result when the projection is reversed", () => {
@@ -22,4 +25,11 @@ it("albersUsaVertical(point) and albersUsaVertical.invert(point) returns the exp
   assertProjectionEqual(projection, [-149.9003, 61.2181], [216.1, 443.7], 0.1); // Anchorage, AK
   assertProjectionEqual(projection, [-157.8583, 21.3069], [335.9, 446.7], 0.1); // Honolulu, HI
   assert.strictEqual(projection([2.3522, 48.8566]), null); // Paris, France
+  assert.strictEqual(projection.invert([0, 0]), null);
+  assert.strictEqual(projection.invert([10, 10]), null);
+  assert.strictEqual(projection.invert([1000, 1000]), null);
+});
+
+it("albersUsaVertical draws polygons in the correct panel", () => {
+  assertLower48Layout(() => geoAlbersUsaVertical());
 });

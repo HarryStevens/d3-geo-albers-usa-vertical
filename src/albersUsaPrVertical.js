@@ -1,5 +1,4 @@
 import { geoAlbers, geoConicEqualArea } from "d3-geo";
-import { geoClipPolygon } from "d3-geo-polygon";
 
 import { 
   splitX,
@@ -16,18 +15,25 @@ import {
 } from "./constants.js";
 
 import {
+  covers,
+  dispatch,
   fitExtent,
   fitHeight,
   fitSize,
   fitWidth,
-  multiplex
+  geographicBounds
 } from "./geo.js";
+
+// The lower 48 does not cross the antimeridian. The default antimeridian clip
+// treats a small counterclockwise ring as the outside of the world and fills
+// the whole panel.
+const passThrough = stream => stream;
 
 export default function geoAlbersUsaPrVertical() {
   let cache,
       cacheStream,
-      lower48E = geoAlbers(), lower48EPoint,
-      lower48W = geoAlbers(), lower48WPoint,
+      lower48E = geoAlbers().preclip(passThrough), lower48EPoint,
+      lower48W = geoAlbers().preclip(passThrough), lower48WPoint,
       alaska = geoConicEqualArea().rotate([154, 0]).center([-2, 58.5]).parallels([55, 65]),
       alaskaPoint,
       hawaii = geoConicEqualArea().rotate([157, 0]).center([-3, 19.9]).parallels([8, 18]),
@@ -35,91 +41,67 @@ export default function geoAlbersUsaPrVertical() {
       puertoRico = geoConicEqualArea().rotate([66, 0]).center([0, 18]).parallels([8, 18]),
       puertoRicoPoint,
       point,
-      pointStream = {point: function(x, y) { point = [x, y]; }};
+      pointStream = {point: function(x, y) { point = [x, y]; }},
+      eastBounds, westBounds, alaskaBounds, hawaiiBounds, puertoRicoBounds,
+      clips;
     
   // Main projection state
   let k = 1070, x = 480, y = 250, reverse = false;
 
   function albersUsaPrVertical(coordinates) {
     const lon = coordinates[0], lat = coordinates[1];
-    return point = null,
-        (lower48EPoint.point(lon, lat), point) ||
-        (lower48WPoint.point(lon, lat), point) ||
-        (alaskaPoint.point(lon, lat), point) ||
-        (hawaiiPoint.point(lon, lat), point) ||
-        (puertoRicoPoint.point(lon, lat), point);
+    if (covers(eastBounds, lon, lat)) {
+      point = null;
+      lower48EPoint.point(lon, lat);
+      if (point) return point;
+    }
+    if (covers(westBounds, lon, lat)) {
+      point = null;
+      lower48WPoint.point(lon, lat);
+      if (point) return point;
+    }
+    if (covers(alaskaBounds, lon, lat)) {
+      point = null;
+      alaskaPoint.point(lon, lat);
+      if (point) return point;
+    }
+    if (covers(hawaiiBounds, lon, lat)) {
+      point = null;
+      hawaiiPoint.point(lon, lat);
+      if (point) return point;
+    }
+    if (covers(puertoRicoBounds, lon, lat)) {
+      point = null;
+      puertoRicoPoint.point(lon, lat);
+      if (point) return point;
+    }
+    return null;
   }
 
   albersUsaPrVertical.invert = function(coordinates) {
-    // Normalized coordinates relative to the top projection's frame
-    const topProjection = reverse ? lower48W : lower48E;
-    const t_top = topProjection.translate();
-    const x_norm = (coordinates[0] - t_top[0]) / k;
-    const y_norm = (coordinates[1] - t_top[1]) / k;
-
-    // East is on top
-    if (!reverse) {
-      if (y_norm >= puertoRicoYRange[0] && y_norm < puertoRicoYRange[1] && x_norm >= puertoRicoXRange[0] && x_norm < puertoRicoXRange[1]) {
-        return puertoRico.invert(coordinates);
+    const px = coordinates[0], py = coordinates[1];
+    for (let i = 0; i < clips.length; ++i) {
+      const extent = clips[i][0];
+      if (px >= extent[0][0] && px <= extent[1][0] && py >= extent[0][1] && py <= extent[1][1]) {
+        return clips[i][1].invert(coordinates);
       }
-      if (y_norm >= eastYRange[0] && y_norm < eastYRange[1]) {
-        return lower48E.invert(coordinates);
-      }
-      // Shift coords to be relative to the bottom (West) block's frame.
-      const yb = y_norm - splitY(reverse);
-      const xb = x_norm - splitX;
-      if (yb >= alaskaYRange[0] && yb < alaskaYRange[1] && xb >= alaskaXRange[0] && xb < alaskaXRange[1]) {
-        return alaska.invert(coordinates);
-      }
-      if (yb >= hawaiiYRange[0] && yb < hawaiiYRange[1] && xb >= hawaiiXRange[0] && xb < hawaiiXRange[1]) {
-        return hawaii.invert(coordinates);
-      }
-      return lower48W.invert(coordinates);
-      
-    // West is on top
-    } else { 
-      if (y_norm >= westYRange[0] && y_norm < westYRange[1]) {
-        // Coords are already relative to the west frame.
-        if (y_norm >= alaskaYRange[0] && y_norm < alaskaYRange[1] && x_norm >= alaskaXRange[0] && x_norm < alaskaXRange[1]) {
-          return alaska.invert(coordinates);
-        }
-        if (y_norm >= hawaiiYRange[0] && y_norm < hawaiiYRange[1] && x_norm >= hawaiiXRange[0] && x_norm < hawaiiXRange[1]) {
-          return hawaii.invert(coordinates);
-        }
-        return lower48W.invert(coordinates);
-      }
-
-      // Otherwise, it's in the bottom (East) block.
-      // We must check for the Puerto Rico inset before assuming it's the mainland.
-      
-      // Shift coords to be relative to the bottom (East) block's frame
-      const yb = y_norm - splitY(reverse);
-      const xb = x_norm + splitX; // Note: +splitX because east is translated left
-
-      if (yb >= puertoRicoYRange[0] && yb < puertoRicoYRange[1] && xb >= puertoRicoXRange[0] && xb < puertoRicoXRange[1]) {
-        return puertoRico.invert(coordinates);
-      }
-
-      // If it's not PR, then it's the rest of the eastern block.
-      return lower48E.invert(coordinates);
     }
+    return null;
   };
 
   albersUsaPrVertical.stream = function(stream) {
-    return cache && cacheStream === stream ?
-      cache :
-      cache = multiplex([
-        lower48E.stream(cacheStream = stream),
-        lower48W.stream(stream),
-        alaska.stream(stream),
-        hawaii.stream(stream),
-        puertoRico.stream(stream)
-      ]);
+    return cache && cacheStream === stream ? cache : cache = dispatch([
+      [lower48E.stream(cacheStream = stream), eastBounds],
+      [lower48W.stream(stream), westBounds],
+      [alaska.stream(stream), alaskaBounds],
+      [hawaii.stream(stream), hawaiiBounds],
+      [puertoRico.stream(stream), puertoRicoBounds]
+    ]);
   };
 
   albersUsaPrVertical.precision = function(_) {
     if (!arguments.length) return lower48E.precision();
-    lower48E.precision(_), lower48W.precision(_), alaska.precision(_), hawaii.precision(_), puertoRico.precision(_)
+    lower48E.precision(_), lower48W.precision(_), alaska.precision(_), hawaii.precision(_), puertoRico.precision(_);
     return reset();
   };
 
@@ -150,60 +132,65 @@ export default function geoAlbersUsaPrVertical() {
     const eastY = reverse ? y + bandY : y;
     const westY = reverse ? y : y + bandY;
 
+    const eastExtent = [
+      [x - bandX, eastY + eastYRange[0] * k],
+      [x, eastY + eastYRange[1] * k]
+    ];
+    const westExtent = [
+      [x - bandX, westY + westYRange[0] * k],
+      [x, westY + westYRange[1] * k]
+    ];
+    const alaskaExtent = [
+      [x + alaskaXRange[0] * k + epsilon, westY + alaskaYRange[0] * k + epsilon],
+      [x + alaskaXRange[1] * k - epsilon, westY + alaskaYRange[1] * k - epsilon]
+    ];
+    const hawaiiExtent = [
+      [x + hawaiiXRange[0] * k + epsilon, westY + hawaiiYRange[0] * k + epsilon],
+      [x + hawaiiXRange[1] * k - epsilon, westY + hawaiiYRange[1] * k - epsilon]
+    ];
+    const puertoRicoExtent = [
+      [x - bandX + puertoRicoXRange[0] * k, eastY + puertoRicoYRange[0] * k],
+      [x - bandX + puertoRicoXRange[1] * k, eastY + puertoRicoYRange[1] * k]
+    ];
+
     lower48EPoint = lower48E
         .translate([x - bandX, eastY])
-        .clipExtent([
-          [x - bandX, eastY + eastYRange[0] * k],
-          [x, eastY + eastYRange[1] * k]
-        ])
+        .clipExtent(eastExtent)
         .stream(pointStream);
 
     lower48WPoint = lower48W
         .translate([x, westY])
-        .clipExtent([
-          [x - splitX * k, westY + westYRange[0] * k],
-          [x, westY + westYRange[1] * k]
-        ])
+        .clipExtent(westExtent)
         .stream(pointStream);
 
     alaskaPoint = alaska
         .translate([x - 0.265 * k, westY + 0.198 * k])
-        .clipExtent([
-          [x + alaskaXRange[0] * k + epsilon, westY + alaskaYRange[0] * k + epsilon],
-          [x + alaskaXRange[1] * k - epsilon, westY + alaskaYRange[1] * k - epsilon]
-        ])
+        .clipExtent(alaskaExtent)
         .stream(pointStream);
 
     hawaiiPoint = hawaii
         .translate([x - 0.170 * k, westY + 0.208 * k])
-        .clipExtent([
-          [x + hawaiiXRange[0] * k + epsilon, westY + hawaiiYRange[0] * k + epsilon],
-          [x + hawaiiXRange[1] * k - epsilon, westY + hawaiiYRange[1] * k - epsilon]
-        ])
+        .clipExtent(hawaiiExtent)
         .stream(pointStream);
 
     puertoRicoPoint = puertoRico
         .translate([x - bandX + 0.339 * k, eastY + 0.224 * k])
-        .clipExtent([
-          [x - bandX + puertoRicoXRange[0] * k, eastY + puertoRicoYRange[0] * k],
-          [x - bandX + puertoRicoXRange[1] * k, eastY + puertoRicoYRange[1] * k]
-        ])
+        .clipExtent(puertoRicoExtent)
         .stream(pointStream);
 
-    // Clipping seam is relative to the eastern block's position
-    const seam = [
-      [x, eastY + eastYRange[0] * k],
-      [x, eastY + eastYRange[1] * k]
-    ].map(lower48E.invert);
-
-    lower48E.preclip(geoClipPolygon({
-      type: "Polygon",
-      coordinates: [[
-        ...seam,
-        [seam[1][0], -90],
-        [seam[0][0], 90]
-      ]]
-    }));      
+    eastBounds = geographicBounds(lower48E.invert, eastExtent);
+    westBounds = geographicBounds(lower48W.invert, westExtent);
+    alaskaBounds = geographicBounds(alaska.invert, alaskaExtent);
+    hawaiiBounds = geographicBounds(hawaii.invert, hawaiiExtent);
+    puertoRicoBounds = geographicBounds(puertoRico.invert, puertoRicoExtent);
+    // Insets overlap their parent panel in pixel space, so test them first.
+    clips = [
+      [alaskaExtent, alaska],
+      [hawaiiExtent, hawaii],
+      [puertoRicoExtent, puertoRico],
+      [eastExtent, lower48E],
+      [westExtent, lower48W]
+    ];
 
     return reset();
   };

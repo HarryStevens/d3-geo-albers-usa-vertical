@@ -1,7 +1,7 @@
 {
   "name": "d3-geo-albers-usa-vertical",
   "description": "Adaptations of the Albers USA projection for vertical screens.",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
@@ -34,8 +34,7 @@
   "license": "ISC",
   "sideEffects": false,
   "dependencies": {
-    "d3-geo": "^3.1.1",
-    "d3-geo-polygon": "^2.0.1"
+    "d3-geo": "^3.1.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.37.0",

@@ -2,7 +2,7 @@
 
 import assert from "assert";
 import { geoAlbersUsaPrVertical } from "../src/index.js";
-import { assertProjectionEqual } from "./asserts.mjs";
+import { assertInPanel, assertLower48Layout, assertMatchesProjection, assertProjectionEqual, polygon, ringBounds } from "./asserts.mjs";
 
 it("albersUsaPrVertical(point) and albersUsaPrVertical.invert(point) returns the expected result", () => {
   const projection = geoAlbersUsaPrVertical();
@@ -13,6 +13,9 @@ it("albersUsaPrVertical(point) and albersUsaPrVertical.invert(point) returns the
   assertProjectionEqual(projection, [-157.8583, 21.3069], [335.9, 937.8], 0.1); // Honolulu, HI
   assertProjectionEqual(projection, [ -66.0617, 18.3982], [453.2, 482.2], 0.1); // San Juan, PR
   assert.strictEqual(projection([2.3522, 48.8566]), null); // Paris, France
+  assert.strictEqual(projection.invert([0, 0]), null);
+  assert.strictEqual(projection.invert([10, 10]), null);
+  assert.strictEqual(projection.invert([1000, 1000]), null);
 });
 
 it("albersUsaPrVertical(point) and albersUsaPrVertical.invert(point) returns the expected result when the projection is reversed", () => {
@@ -24,4 +27,22 @@ it("albersUsaPrVertical(point) and albersUsaPrVertical.invert(point) returns the
   assertProjectionEqual(projection, [-157.8583, 21.3069], [335.9, 446.7], 0.1); // Honolulu, HI
   assertProjectionEqual(projection, [ -66.0617, 18.3982], [453.2, 942.3], 0.1); // San Juan, PR
   assert.strictEqual(projection([2.3522, 48.8566]), null); // Paris, France
+  assert.strictEqual(projection.invert([0, 0]), null);
+  assert.strictEqual(projection.invert([10, 10]), null);
+  assert.strictEqual(projection.invert([1000, 1000]), null);
+});
+
+it("albersUsaPrVertical draws polygons in the correct panel", () => {
+  assertLower48Layout(() => geoAlbersUsaPrVertical());
+
+  const rico = [[-67.2, 17.9], [-67.2, 18.6], [-65.6, 18.6], [-65.6, 17.9]];
+  const projection = geoAlbersUsaPrVertical();
+  const bounds = ringBounds(projection, polygon(rico));
+  assert.strictEqual(bounds.length, 1);
+  assertMatchesProjection(projection, rico, bounds[0]);
+
+  const reversed = geoAlbersUsaPrVertical().reverse(true);
+  const reversedBounds = ringBounds(reversed, polygon(rico));
+  assertInPanel(reversedBounds, "bottom");
+  assertMatchesProjection(reversed, rico, reversedBounds[0]);
 });
