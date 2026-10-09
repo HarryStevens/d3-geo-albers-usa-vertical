@@ -2,6 +2,8 @@
 
 import assert from "assert";
 import {geoPath, geoStream} from "d3-geo";
+import {contains} from "../src/clip.js";
+import {eastExtent, eastRing, westExtent} from "../src/seam.js";
 
 export function assertProjectionEqual(projection, location, point, delta) {
   assert(planarEqual(projection(location), point, delta || 1e-6)
@@ -127,4 +129,92 @@ export function assertLower48Layout(makeProjection) {
   const paris = polygon([[2, 48], [3, 48], [3, 49], [2, 49]]);
   assert.strictEqual(geoPath(projection)(paris), null);
   assert.strictEqual(geoPath(reversed)(paris), null);
+}
+
+export function assertSeamLayout(makeProjection) {
+  const east = [[-90, 38], [-90, 40], [-88, 40], [-88, 38]];
+  const west = [[-110, 38], [-110, 40], [-105, 40], [-105, 38]];
+  const across = [[-100, 38], [-100, 40], [-90, 40], [-90, 38]];
+  const counterclockwise = [[-90, 38], [-88, 38], [-88, 40], [-90, 40]];
+  const hole = {
+    type: "Polygon",
+    coordinates: [
+      [[-90, 35], [-90, 42], [-80, 42], [-80, 35], [-90, 35]],
+      [[-88, 37], [-82, 37], [-82, 40], [-88, 40], [-88, 37]]
+    ]
+  };
+  const line = {type: "LineString", coordinates: [[-99, 39], [-91, 39]]};
+
+  const projection = makeProjection();
+  const eastBounds = ringBounds(projection, polygon(east));
+  const westBounds = ringBounds(projection, polygon(west));
+  assert.strictEqual(eastBounds.length, 1);
+  assert.strictEqual(westBounds.length, 1);
+  assertAbove(eastBounds, westBounds);
+  assertMatchesProjection(projection, east, eastBounds[0]);
+  assertMatchesProjection(projection, west, westBounds[0]);
+
+  const ccw = ringBounds(projection, polygon(counterclockwise));
+  assert.strictEqual(ccw.length, 1);
+  assertAbove(ccw, westBounds);
+  assertMatchesProjection(projection, east, ccw[0]);
+
+  const split = ringBounds(projection, polygon(across));
+  assertSplit(split, eastBounds[0], westBounds[0]);
+
+  const holeBounds = ringBounds(projection, hole);
+  assert.strictEqual(holeBounds.length, 2);
+  assertAbove(holeBounds, westBounds);
+
+  assertSplit(ringBounds(projection, line), eastBounds[0], westBounds[0]);
+  assertLandSeparated(projection);
+
+  const reversed = makeProjection().reverse(true);
+  const reversedEast = ringBounds(reversed, polygon(east));
+  const reversedWest = ringBounds(reversed, polygon(west));
+  assertAbove(reversedWest, reversedEast);
+  assertSplit(ringBounds(reversed, polygon(across)), reversedWest[0], reversedEast[0]);
+  assertLandSeparated(reversed);
+
+  const paris = polygon([[2, 48], [3, 48], [3, 49], [2, 49]]);
+  assert.strictEqual(geoPath(projection)(paris), null);
+  assert.strictEqual(geoPath(reversed)(paris), null);
+}
+
+function assertAbove(upper, lower) {
+  for (let i = 0; i < upper.length; ++i) assertSmall(upper[i]);
+  for (let i = 0; i < lower.length; ++i) assertSmall(lower[i]);
+  for (let i = 0; i < upper.length; ++i) {
+    for (let j = 0; j < lower.length; ++j) {
+      assert.ok(upper[i][3] < lower[j][1], `expected a gap between ${upper[i]} and ${lower[j]}`);
+    }
+  }
+}
+
+function assertSplit(bounds, top, bottom) {
+  assert.strictEqual(bounds.length, 2, `expected a piece in each panel, got ${bounds.length}`);
+  for (let i = 0; i < bounds.length; ++i) assertSmall(bounds[i]);
+  assert.strictEqual(bounds.filter(b => b[3] < bottom[1]).length, 1, `expected one piece above the lower panel: ${JSON.stringify(bounds)}`);
+  assert.strictEqual(bounds.filter(b => b[1] > top[3]).length, 1, `expected one piece below the upper panel: ${JSON.stringify(bounds)}`);
+}
+
+function assertLandSeparated(projection) {
+  const eastY = landSpan(projection, eastExtent);
+  const westY = landSpan(projection, westExtent.filter(point => !contains(eastRing, point[0], point[1])));
+  // The panels meet. Reversed, one fiftieth of the scale separates them.
+  const separation = projection.reverse() ? eastY[0] - westY[1] : westY[0] - eastY[1];
+  const expected = (projection.reverse() ? 0.02 : 0) * projection.scale();
+  assert.ok(Math.abs(separation - expected) < 1e-6, `expected a gap of ${expected}, got ${separation}`);
+}
+
+function landSpan(projection, points) {
+  let y0 = Infinity, y1 = -Infinity;
+  for (let i = 0; i < points.length; ++i) {
+    const p = projection(points[i]);
+    if (!p) continue;
+    if (p[1] < y0) y0 = p[1];
+    if (p[1] > y1) y1 = p[1];
+  }
+  assert.ok(y0 < y1, "expected land extremes in this panel");
+  return [y0, y1];
 }

@@ -20,7 +20,7 @@ const projection = geoAlbersUsaVertical();
 
 <a href="https://observablehq.com/@harrystevens/d3-geo-albers-usa-vertical"><img src="img/albers-usa-vertical.png" width="300" height="691" alt="A map of U.S. counties using the vertical Albers USA projection"></a>
 
-This is a U.S.-centric composite projection of four [geoConicEqualArea](https://d3js.org/d3-geo/conic#geoConicEqualArea) projections: On the top half of the map, [geoAlbers](https://d3js.org/d3-geo/conic#geoAlbers) is used for the eastern part of the lower fourty-eight states. On the bottom half of the map, geoAlbers is used for the western part of the lower forty-eight states, and separate conic equal-area projections are used for Alaska and Hawaii. The scale for Alaska is diminished: it is projected at 0.35× its true relative area.
+This is a U.S.-centric composite projection of four [geoConicEqualArea](https://d3js.org/d3-geo/conic#geoConicEqualArea) projections: On the top half of the map, [geoAlbers](https://d3js.org/d3-geo/conic#geoAlbers) is used for the eastern part of the lower fourty-eight states. On the bottom half of the map, geoAlbers is used for the western part of the lower forty-eight states, and separate conic equal-area projections are used for Alaska and Hawaii. The scale for Alaska is diminished: it is projected at 0.35× its true relative area. Alaska and Hawaii are placed below the southwestern states.
 
 The constituent projections have fixed clip, center and rotation, and thus this projection does not support [<i>projection</i>.center](https://d3js.org/d3-geo/projection#projection_center), [<i>projection</i>.rotate](https://d3js.org/d3-geo/projection#projection_rotate), [<i>projection</i>.clipAngle](https://d3js.org/d3-geo/projection#projection_clipAngle), or [<i>projection</i>.clipExtent](https://d3js.org/d3-geo/projection#projection_clipExtent).
 
@@ -30,8 +30,18 @@ The constituent projections have fixed clip, center and rotation, and thus this 
 
 A composite projection identical to the <a href="#geoAlbersUsaVertical">U.S. states vertical projection</a> but with another inset for Puerto Rico, projected with [geoConicEqualArea](https://d3js.org/d3-geo/conic#geoConicEqualArea) and placed to the right of Florida.
 
+<a name="geoAlbersUsaSeam" href="#geoAlbersUsaSeam">#</a> d3.<b>geoAlbersUsaSeam</b>() · [Source](https://github.com/HarryStevens/d3-geo-albers-usa-vertical/blob/main/src/albersUsaSeam.js)
+
+This is a U.S.-centric composite projection of four [geoConicEqualArea](https://d3js.org/d3-geo/conic#geoConicEqualArea) projections. The lower forty-eight states are split along a state border rather than a meridian: the western boundary of Minnesota, Iowa, Missouri, Arkansas, and Louisiana. On the top half of the map, [geoAlbers](https://d3js.org/d3-geo/conic#geoAlbers) is used for the states on that boundary and to its east, including the District of Columbia. On the bottom half of the map, geoAlbers is used for the other contiguous states, and separate conic equal-area projections are used for Alaska and Hawaii. The scale for Alaska is diminished: it is projected at 0.35× its true relative area. Alaska and Hawaii are placed below the southwestern states.
+
+The constituent projections have fixed clip, center and rotation, and thus this projection does not support [<i>projection</i>.center](https://d3js.org/d3-geo/projection#projection_center), [<i>projection</i>.rotate](https://d3js.org/d3-geo/projection#projection_rotate), [<i>projection</i>.clipAngle](https://d3js.org/d3-geo/projection#projection_clipAngle), or [<i>projection</i>.clipExtent](https://d3js.org/d3-geo/projection#projection_clipExtent).
+
+<a name="geoAlbersUsaPrSeam" href="#geoAlbersUsaPrSeam">#</a> d3.<b>geoAlbersUsaPrSeam</b>() · [Source](https://github.com/HarryStevens/d3-geo-albers-usa-vertical/blob/main/src/albersUsaPrSeam.js)
+
+A composite projection identical to the <a href="#geoAlbersUsaSeam">U.S. states seam projection</a> but with another inset for Puerto Rico, projected with [geoConicEqualArea](https://d3js.org/d3-geo/conic#geoConicEqualArea) and placed to the right of Florida.
+
 <a name="projection_reverse" href="#projection_reverse">#</a> <i>projection</i>.<b>reverse</b>([<i>reverse</i>])
 
-If <i>reverse</i> is specified, sets whether the projection’s layout is reversed. If true, the projection is reversed: the top portion of the map shows the western half of the contiguous U.S. and the Alaska and Hawaii insets, while the bottom portion of the map shows the eastern half of the contiguous U.S. If <i>reverse</i> is not specified, returns the current setting, which defaults to false.
+If <i>reverse</i> is specified, sets whether the projection’s layout is reversed. If true, the two parts of the contiguous United States swap places: the part normally drawn on the bottom is drawn on top, together with the Alaska and Hawaii insets, and the part normally drawn on top is drawn on the bottom. On the Puerto Rico projections, that inset stays with the eastern states. On the seam projections, the reversed layout leaves a gap of one fiftieth of the scale between the two halves. If <i>reverse</i> is not specified, returns the current setting, which defaults to false.
 
 <img src="img/albers-usa-vertical-reverse.png" width="300" height="691" alt="A map of U.S. counties using the reversed vertical Albers USA projection, where the western half and insets are on top and the eastern half is on bottom">

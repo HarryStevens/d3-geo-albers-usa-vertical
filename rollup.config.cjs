@@ -1,5 +1,6 @@
 // rollup.config.cjs
 const { readFileSync } = require("fs");
+const resolve = require("@rollup/plugin-node-resolve");
 const terser = require("@rollup/plugin-terser");
 const meta = require("./package.json");
 
@@ -14,6 +15,7 @@ const banner = `// v${meta.version} Copyright ${copyright}`;
 
 module.exports = {
   input: "src/index.js",
+  plugins: [resolve()],
   external: Object.keys(meta.dependencies || {}).filter(key => /^d3-/.test(key)),
   output: [
     // ES module (for import)
