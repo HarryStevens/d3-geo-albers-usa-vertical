@@ -1,7 +1,7 @@
 {
   "name": "d3-geo-albers-usa-vertical",
   "description": "Adaptations of the Albers USA projection for vertical screens.",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
