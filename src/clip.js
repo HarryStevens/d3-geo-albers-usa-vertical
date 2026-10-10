@@ -53,8 +53,8 @@ export function clipPolygon(rings, ring) {
 // panels are {stream, ring, bounds}. insets are {stream, region}, where region
 // is a geographicBounds result. Geometry that stays off the shared border is
 // forwarded unchanged; geometry that can cross it is cut.
-export function seamDispatch(panels, insets) {
-  const seam = pad(sharedBounds(panels[0].ring, panels[1].ring), 0.02);
+export function seamDispatch(panels, insets, seamBounds) {
+  const seam = seamBounds || pad(sharedBounds(panels[0].ring, panels[1].ring), 0.02);
   const xs = [];
   const ys = [];
   const ringStarts = [];

@@ -2,7 +2,7 @@
 
 import assert from "assert";
 import {geoAlbersUsaSeam} from "../src/index.js";
-import {assertProjectionEqual, assertSeamLayout} from "./asserts.mjs";
+import {assertOnePixelSeamOverlap, assertProjectionEqual, assertSeamLayout} from "./asserts.mjs";
 
 it("albersUsaSeam(point) and albersUsaSeam.invert(point) returns the expected result", () => {
   const projection = geoAlbersUsaSeam();
@@ -38,6 +38,10 @@ it("albersUsaSeam(point) and albersUsaSeam.invert(point) returns the expected re
 
 it("albersUsaSeam draws polygons along the state border", () => {
   assertSeamLayout(() => geoAlbersUsaSeam());
+});
+
+it("albersUsaSeam draws a border one pixel across the seam", () => {
+  assertOnePixelSeamOverlap(() => geoAlbersUsaSeam());
 });
 
 it("albersUsaSeam fits a set of points", () => {

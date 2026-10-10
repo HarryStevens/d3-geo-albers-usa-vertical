@@ -131,6 +131,33 @@ export function assertLower48Layout(makeProjection) {
   assert.strictEqual(geoPath(reversed)(paris), null);
 }
 
+// The clip keeps a line half a pixel across the shared border and drops a line
+// a pixel and a half across it. A point across the border is still routed to
+// the panel that contains it.
+export function assertOnePixelSeamOverlap(makeProjection) {
+  const projection = makeProjection();
+  const seamLon = -96.4536;
+  const beside = projection([seamLon + 0.05, 44]);
+  const further = projection([seamLon + 0.15, 44]);
+  assert.ok(beside && further, "expected both sample points on the eastern panel");
+  const pixelsPerDegree = Math.abs(further[0] - beside[0]) / 0.1;
+  const lineAt = pixels => ({
+    type: "LineString",
+    coordinates: [
+      [seamLon - pixels / pixelsPerDegree, 44.2],
+      [seamLon - pixels / pixelsPerDegree, 43.8]
+    ]
+  });
+  const nearBounds = ringBounds(projection, lineAt(0.5));
+  const farBounds = ringBounds(projection, lineAt(1.5));
+  assert.strictEqual(nearBounds.length, 2);
+  assert.strictEqual(nearBounds.filter(bounds => bounds[3] < 500).length, 1);
+  assert.strictEqual(nearBounds.filter(bounds => bounds[1] > 700).length, 1);
+  assert.strictEqual(farBounds.length, 1);
+  assert.ok(farBounds[0][1] > 700);
+  assert.ok(projection([seamLon - 0.5 / pixelsPerDegree, 44])[1] > 700);
+}
+
 export function assertSeamLayout(makeProjection) {
   const east = [[-90, 38], [-90, 40], [-88, 40], [-88, 38]];
   const west = [[-110, 38], [-110, 40], [-105, 40], [-105, 38]];

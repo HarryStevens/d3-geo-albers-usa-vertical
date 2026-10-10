@@ -29,6 +29,14 @@ const puertoRicoOffset = [0.030, 0.020];
 
 const eastBounds = ringBox(eastRing);
 const westBounds = ringBox(westRing);
+const eastVertexKeys = new Set(eastRing.map(vertexKey));
+const seamVertexKeys = new Set(westRing.map(vertexKey).filter(id => eastVertexKeys.has(id)));
+const sharedSeamBounds = sharedBounds(eastRing, westRing);
+
+// Lines and polygons are cut one pixel past the shared border. A boundary from
+// a slightly different dataset then still strokes across the seam. Point
+// routing and invert keep the unpadded rings.
+const seamOverlap = 1;
 
 export default function geoAlbersUsaSeam() {
   return createAlbersUsaSeam(false);
@@ -54,6 +62,11 @@ export function createAlbersUsaSeam(hasPuertoRico) {
       puertoRicoBounds,
       eastHit,
       westHit,
+      eastClip = eastRing,
+      westClip = westRing,
+      eastClipBounds = eastBounds,
+      westClipBounds = westBounds,
+      seamBounds = padBox(sharedSeamBounds, 0.02),
       clips;
 
   let k = 1070, x = 480, y = 250, reverse = false;
@@ -114,9 +127,9 @@ export function createAlbersUsaSeam(hasPuertoRico) {
     ];
     if (puertoRico) insets.push({stream: puertoRico.stream(stream), region: puertoRicoBounds});
     return cache = seamDispatch([
-      {stream: lower48E.stream(cacheStream = stream), ring: eastRing, bounds: eastBounds},
-      {stream: lower48W.stream(stream), ring: westRing, bounds: westBounds}
-    ], insets);
+      {stream: lower48E.stream(cacheStream = stream), ring: eastClip, bounds: eastClipBounds},
+      {stream: lower48W.stream(stream), ring: westClip, bounds: westClipBounds}
+    ], insets, seamBounds);
   };
 
   albersUsaSeam.precision = function(_) {
@@ -180,6 +193,11 @@ export function createAlbersUsaSeam(hasPuertoRico) {
 
     lower48EPoint = lower48E.translate([eastTx, eastTy]).stream(pointStream);
     lower48WPoint = lower48W.translate([westTx, westTy]).stream(pointStream);
+    eastClip = padClipRing(lower48E, eastRing, -seamOverlap);
+    westClip = padClipRing(lower48W, westRing, seamOverlap);
+    eastClipBounds = ringBox(eastClip);
+    westClipBounds = ringBox(westClip);
+    seamBounds = padBox(sharedSeamBounds, Math.max(overlapMargin(lower48E), overlapMargin(lower48W)) + 0.02);
 
     alaskaPoint = alaska
         .translate([alaskaLeft + alaskaOffset[0] * k, alaskaTop + alaskaOffset[1] * k])
@@ -245,6 +263,60 @@ export function createAlbersUsaSeam(hasPuertoRico) {
   }
 
   return albersUsaSeam.scale(k);
+}
+
+function overlapMargin(projection) {
+  let margin = 0;
+  for (let i = 0; i < eastRing.length; ++i) {
+    const vertex = eastRing[i];
+    if (!seamVertexKeys.has(vertexKey(vertex))) continue;
+    const projected = projection(vertex);
+    if (!projected) continue;
+    const geographic = projection.invert([projected[0] + seamOverlap, projected[1]]);
+    if (!geographic) continue;
+    const dlon = Math.abs(geographic[0] - vertex[0]);
+    const dlat = Math.abs(geographic[1] - vertex[1]);
+    if (dlon > margin) margin = dlon;
+    if (dlat > margin) margin = dlat;
+  }
+  return margin;
+}
+
+function sharedBounds(a, b) {
+  const seen = new Set(a.map(vertexKey));
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (let i = 0; i < b.length; ++i) {
+    if (!seen.has(vertexKey(b[i]))) continue;
+    const x = b[i][0], y = b[i][1];
+    if (x < x0) x0 = x;
+    if (y < y0) y0 = y;
+    if (x > x1) x1 = x;
+    if (y > y1) y1 = y;
+  }
+  return [x0, y0, x1, y1];
+}
+
+function padBox(bounds, amount) {
+  return [bounds[0] - amount, bounds[1] - amount, bounds[2] + amount, bounds[3] + amount];
+}
+
+function padClipRing(projection, ring, dx) {
+  const padded = new Array(ring.length);
+  for (let i = 0; i < ring.length; ++i) {
+    const vertex = ring[i];
+    if (!seamVertexKeys.has(vertexKey(vertex))) {
+      padded[i] = [vertex[0], vertex[1]];
+      continue;
+    }
+    const projected = projection(vertex);
+    const geographic = projected && projection.invert([projected[0] + dx, projected[1]]);
+    padded[i] = geographic || [vertex[0], vertex[1]];
+  }
+  return padded;
+}
+
+function vertexKey(point) {
+  return point[0] + " " + point[1];
 }
 
 function ringBox(ring) {
