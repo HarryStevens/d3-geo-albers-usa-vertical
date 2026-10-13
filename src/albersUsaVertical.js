@@ -42,18 +42,17 @@ export default function geoAlbersUsaVertical() {
       clips;
     
   // Main projection state
-  let k = 1070, x = 480, y = 250, reverse = false;
+  let k = 1070, x = 480, y = 250, reverse = false, seamPad = 0;
 
   function albersUsaVertical(coordinates) {
     const lon = coordinates[0], lat = coordinates[1];
-    if (covers(eastBounds, lon, lat)) {
+    const lower48 = reverse
+        ? [[westBounds, lower48WPoint], [eastBounds, lower48EPoint]]
+        : [[eastBounds, lower48EPoint], [westBounds, lower48WPoint]];
+    for (let i = 0; i < lower48.length; ++i) {
+      if (!covers(lower48[i][0], lon, lat)) continue;
       point = null;
-      lower48EPoint.point(lon, lat);
-      if (point) return point;
-    }
-    if (covers(westBounds, lon, lat)) {
-      point = null;
-      lower48WPoint.point(lon, lat);
+      lower48[i][1].point(lon, lat);
       if (point) return point;
     }
     if (covers(alaskaBounds, lon, lat)) {
@@ -107,6 +106,12 @@ export default function geoAlbersUsaVertical() {
     return albersUsaVertical.translate([x, y]);
   };
 
+  albersUsaVertical.seampad = function(_) {
+    if (!arguments.length) return seamPad;
+    seamPad = +_;
+    return albersUsaVertical.translate([x, y]);
+  };
+
   albersUsaVertical.translate = function(_) {
     if (!arguments.length) return [x, y];
     x = +_[0];
@@ -123,12 +128,12 @@ export default function geoAlbersUsaVertical() {
     const westY = reverse ? y : y + bandY;
 
     const eastExtent = [
-      [x - bandX, eastY + eastYRange[0] * k],
+      [x - bandX - seamPad, eastY + eastYRange[0] * k],
       [x, eastY + eastYRange[1] * k]
     ];
     const westExtent = [
       [x - bandX, westY + westYRange[0] * k],
-      [x, westY + westYRange[1] * k]
+      [x + seamPad, westY + westYRange[1] * k]
     ];
     const alaskaExtent = [
       [x + alaskaXRange[0] * k + epsilon, westY + alaskaYRange[0] * k + epsilon],
@@ -164,31 +169,44 @@ export default function geoAlbersUsaVertical() {
     alaskaBounds = geographicBounds(alaska.invert, alaskaExtent);
     hawaiiBounds = geographicBounds(hawaii.invert, hawaiiExtent);
     // Insets overlap their parent panel in pixel space, so test them first.
+    const topExtent = reverse ? [westExtent, lower48W] : [eastExtent, lower48E];
+    const bottomExtent = reverse ? [eastExtent, lower48E] : [westExtent, lower48W];
     clips = [
       [alaskaExtent, alaska],
       [hawaiiExtent, hawaii],
-      [eastExtent, lower48E],
-      [westExtent, lower48W]
+      topExtent,
+      bottomExtent
     ];
 
     return reset();
   };
   
   albersUsaVertical.fitExtent = function(extent, object) {
-    return fitExtent(albersUsaVertical, extent, object);
+    return fitIgnoringSeamPad(() => fitExtent(albersUsaVertical, extent, object));
   };
 
   albersUsaVertical.fitSize = function(size, object) {
-    return fitSize(albersUsaVertical, size, object);
+    return fitIgnoringSeamPad(() => fitSize(albersUsaVertical, size, object));
   };
 
   albersUsaVertical.fitWidth = function(width, object) {
-    return fitWidth(albersUsaVertical, width, object);
+    return fitIgnoringSeamPad(() => fitWidth(albersUsaVertical, width, object));
   };
 
   albersUsaVertical.fitHeight = function(height, object) {
-    return fitHeight(albersUsaVertical, height, object);
+    return fitIgnoringSeamPad(() => fitHeight(albersUsaVertical, height, object));
   };
+
+  function fitIgnoringSeamPad(run) {
+    const pad = seamPad;
+    if (!pad) return run();
+    albersUsaVertical.seampad(0);
+    try {
+      return run();
+    } finally {
+      albersUsaVertical.seampad(pad);
+    }
+  }
 
   function reset() {
     cache = cacheStream = null;

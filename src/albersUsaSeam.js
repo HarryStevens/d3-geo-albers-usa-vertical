@@ -33,11 +33,6 @@ const eastVertexKeys = new Set(eastRing.map(vertexKey));
 const seamVertexKeys = new Set(westRing.map(vertexKey).filter(id => eastVertexKeys.has(id)));
 const sharedSeamBounds = sharedBounds(eastRing, westRing);
 
-// Lines and polygons are cut one pixel past the shared border. A boundary from
-// a slightly different dataset then still strokes across the seam. Point
-// routing and invert keep the unpadded rings.
-const seamOverlap = 1;
-
 export default function geoAlbersUsaSeam() {
   return createAlbersUsaSeam(false);
 }
@@ -69,7 +64,7 @@ export function createAlbersUsaSeam(hasPuertoRico) {
       seamBounds = padBox(sharedSeamBounds, 0.02),
       clips;
 
-  let k = 1070, x = 480, y = 250, reverse = false;
+  let k = 1070, x = 480, y = 250, reverse = false, seamPad = 0;
 
   function albersUsaSeam(coordinates) {
     const lon = coordinates[0], lat = coordinates[1];
@@ -108,13 +103,14 @@ export function createAlbersUsaSeam(hasPuertoRico) {
         return clips[i][1].invert(coordinates);
       }
     }
-    if (inHit(eastHit, px, py)) {
-      const ll = lower48E.invert(coordinates);
-      if (ll && contains(eastRing, ll[0], ll[1])) return ll;
-    }
-    if (inHit(westHit, px, py)) {
-      const ll = lower48W.invert(coordinates);
-      if (ll && contains(westRing, ll[0], ll[1])) return ll;
+    const panels = reverse
+        ? [[westHit, lower48W, westClip], [eastHit, lower48E, eastClip]]
+        : [[eastHit, lower48E, eastClip], [westHit, lower48W, westClip]];
+    for (let i = 0; i < panels.length; ++i) {
+      const hit = panels[i][0], projection = panels[i][1], ring = panels[i][2];
+      if (!inHit(hit, px, py)) continue;
+      const ll = projection.invert(coordinates);
+      if (ll && contains(ring, ll[0], ll[1])) return ll;
     }
     return null;
   };
@@ -148,6 +144,12 @@ export function createAlbersUsaSeam(hasPuertoRico) {
   albersUsaSeam.reverse = function(_) {
     if (!arguments.length) return reverse;
     reverse = !!_;
+    return albersUsaSeam.translate([x, y]);
+  };
+
+  albersUsaSeam.seampad = function(_) {
+    if (!arguments.length) return seamPad;
+    seamPad = +_;
     return albersUsaSeam.translate([x, y]);
   };
 
@@ -193,11 +195,11 @@ export function createAlbersUsaSeam(hasPuertoRico) {
 
     lower48EPoint = lower48E.translate([eastTx, eastTy]).stream(pointStream);
     lower48WPoint = lower48W.translate([westTx, westTy]).stream(pointStream);
-    eastClip = padClipRing(lower48E, eastRing, -seamOverlap);
-    westClip = padClipRing(lower48W, westRing, seamOverlap);
+    eastClip = padClipRing(lower48E, eastRing, -seamPad);
+    westClip = padClipRing(lower48W, westRing, seamPad);
     eastClipBounds = ringBox(eastClip);
     westClipBounds = ringBox(westClip);
-    seamBounds = padBox(sharedSeamBounds, Math.max(overlapMargin(lower48E), overlapMargin(lower48W)) + 0.02);
+    seamBounds = padBox(sharedSeamBounds, Math.max(overlapMargin(lower48E, seamPad), overlapMargin(lower48W, seamPad)) + 0.02);
 
     alaskaPoint = alaska
         .translate([alaskaLeft + alaskaOffset[0] * k, alaskaTop + alaskaOffset[1] * k])
@@ -212,8 +214,8 @@ export function createAlbersUsaSeam(hasPuertoRico) {
         .clipExtent(hawaiiExtent)
         .stream(pointStream);
 
-    eastHit = pixelBox(lower48E, eastRing);
-    westHit = pixelBox(lower48W, westRing);
+    eastHit = pixelBox(lower48E, eastClip);
+    westHit = pixelBox(lower48W, westClip);
     alaskaBounds = geographicBounds(alaska.invert, alaskaExtent);
     hawaiiBounds = geographicBounds(hawaii.invert, hawaiiExtent);
     clips = [
@@ -242,20 +244,31 @@ export function createAlbersUsaSeam(hasPuertoRico) {
   };
 
   albersUsaSeam.fitExtent = function(extent, object) {
-    return fitExtent(albersUsaSeam, extent, object);
+    return fitIgnoringSeamPad(() => fitExtent(albersUsaSeam, extent, object));
   };
 
   albersUsaSeam.fitSize = function(size, object) {
-    return fitSize(albersUsaSeam, size, object);
+    return fitIgnoringSeamPad(() => fitSize(albersUsaSeam, size, object));
   };
 
   albersUsaSeam.fitWidth = function(width, object) {
-    return fitWidth(albersUsaSeam, width, object);
+    return fitIgnoringSeamPad(() => fitWidth(albersUsaSeam, width, object));
   };
 
   albersUsaSeam.fitHeight = function(height, object) {
-    return fitHeight(albersUsaSeam, height, object);
+    return fitIgnoringSeamPad(() => fitHeight(albersUsaSeam, height, object));
   };
+
+  function fitIgnoringSeamPad(run) {
+    const pad = seamPad;
+    if (!pad) return run();
+    albersUsaSeam.seampad(0);
+    try {
+      return run();
+    } finally {
+      albersUsaSeam.seampad(pad);
+    }
+  }
 
   function reset() {
     cache = cacheStream = null;
@@ -265,14 +278,15 @@ export function createAlbersUsaSeam(hasPuertoRico) {
   return albersUsaSeam.scale(k);
 }
 
-function overlapMargin(projection) {
+function overlapMargin(projection, dx) {
   let margin = 0;
+  if (!dx) return margin;
   for (let i = 0; i < eastRing.length; ++i) {
     const vertex = eastRing[i];
     if (!seamVertexKeys.has(vertexKey(vertex))) continue;
     const projected = projection(vertex);
     if (!projected) continue;
-    const geographic = projection.invert([projected[0] + seamOverlap, projected[1]]);
+    const geographic = projection.invert([projected[0] + dx, projected[1]]);
     if (!geographic) continue;
     const dlon = Math.abs(geographic[0] - vertex[0]);
     const dlat = Math.abs(geographic[1] - vertex[1]);
@@ -301,6 +315,7 @@ function padBox(bounds, amount) {
 }
 
 function padClipRing(projection, ring, dx) {
+  if (!dx) return ring;
   const padded = new Array(ring.length);
   for (let i = 0; i < ring.length; ++i) {
     const vertex = ring[i];

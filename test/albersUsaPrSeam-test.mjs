@@ -41,7 +41,7 @@ it("albersUsaPrSeam(point) and albersUsaPrSeam.invert(point) returns the expecte
 });
 
 it("albersUsaPrSeam draws a border one pixel across the seam", () => {
-  assertOnePixelSeamOverlap(() => geoAlbersUsaPrSeam());
+  assertOnePixelSeamOverlap(() => geoAlbersUsaPrSeam().seampad(1));
 });
 
 it("albersUsaPrSeam draws polygons along the state border", () => {

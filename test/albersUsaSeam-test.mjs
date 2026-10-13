@@ -1,8 +1,9 @@
 /* eslint-env mocha */
 
 import assert from "assert";
+import {geoStream} from "d3-geo";
 import {geoAlbersUsaSeam} from "../src/index.js";
-import {assertOnePixelSeamOverlap, assertProjectionEqual, assertSeamLayout} from "./asserts.mjs";
+import {assertOnePixelSeamOverlap, assertProjectionEqual, assertSeamLayout, ringBounds} from "./asserts.mjs";
 
 it("albersUsaSeam(point) and albersUsaSeam.invert(point) returns the expected result", () => {
   const projection = geoAlbersUsaSeam();
@@ -40,8 +41,62 @@ it("albersUsaSeam draws polygons along the state border", () => {
   assertSeamLayout(() => geoAlbersUsaSeam());
 });
 
+it("albersUsaSeam.seampad defaults to 0", () => {
+  const projection = geoAlbersUsaSeam();
+  assert.strictEqual(projection.seampad(), 0);
+  assert.strictEqual(projection.seampad(1), projection);
+  assert.strictEqual(projection.seampad(), 1);
+  const seamLon = -96.4536;
+  const beside = projection.seampad(0)([seamLon + 0.05, 44]);
+  const further = projection([seamLon + 0.15, 44]);
+  const pixelsPerDegree = Math.abs(further[0] - beside[0]) / 0.1;
+  const bounds = ringBounds(projection, {
+    type: "LineString",
+    coordinates: [[seamLon - 0.5 / pixelsPerDegree, 44.2], [seamLon - 0.5 / pixelsPerDegree, 43.8]]
+  });
+  assert.strictEqual(bounds.length, 1);
+  assert.ok(bounds[0][1] > 700);
+});
+
 it("albersUsaSeam draws a border one pixel across the seam", () => {
-  assertOnePixelSeamOverlap(() => geoAlbersUsaSeam());
+  assertOnePixelSeamOverlap(() => geoAlbersUsaSeam().seampad(1));
+});
+
+it("albersUsaSeam.invert returns the padded border on the top panel", () => {
+  const projection = geoAlbersUsaSeam().seampad(1);
+  const seamLon = -96.4536;
+  const beside = projection([seamLon + 0.05, 44]);
+  const further = projection([seamLon + 0.15, 44]);
+  const pixelsPerDegree = Math.abs(further[0] - beside[0]) / 0.1;
+  const lon = seamLon - 0.5 / pixelsPerDegree;
+  const points = [];
+  geoStream({type: "LineString", coordinates: [[lon, 44.2], [lon, 43.8]]}, projection.stream({
+    point(x, y) { points.push([x, y]); },
+    lineStart() {},
+    lineEnd() {},
+    polygonStart() {},
+    polygonEnd() {},
+    sphere() {}
+  }));
+  const top = points.filter(point => point[1] < 500);
+  assert.ok(top.length, "expected the padded line on the top panel");
+  const inverted = projection.invert(top[0]);
+  assert.ok(inverted, "expected the padded pixel to invert");
+  assert.ok(Math.abs(inverted[0] - lon) < 0.05);
+  assert.ok(inverted[1] > 43.7 && inverted[1] < 44.3);
+});
+
+it("albersUsaSeam.seampad does not change how the projection fits", () => {
+  const object = {
+    type: "MultiPoint",
+    coordinates: [[-74.0059, 40.7128], [-122.4194, 37.7749], [-95.3698, 29.7604]]
+  };
+  const plain = geoAlbersUsaSeam().fitSize([300, 800], object);
+  const padded = geoAlbersUsaSeam().seampad(100).fitSize([300, 800], object);
+  assert.strictEqual(padded.seampad(), 100);
+  assert.strictEqual(plain.scale(), padded.scale());
+  assert.deepStrictEqual(plain.translate(), padded.translate());
+  assert.deepStrictEqual(plain([-74.0059, 40.7128]), padded([-74.0059, 40.7128]));
 });
 
 it("albersUsaSeam fits a set of points", () => {
